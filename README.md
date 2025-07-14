@@ -29,7 +29,7 @@ A modern web application that allows users to upload documents and ask intellige
 - **Axios** - HTTP client for API calls
 
 ### AI/ML
-- **OpenAI Embeddings** - Text vectorization
+- **HuggingFace Embeddings** - Text vectorization
 - **LangChain Document Loaders** - PDF and text processing
 - **Vector Search** - Semantic similarity matching
 
@@ -65,10 +65,6 @@ pip install -r requirements.txt
 # Navigate to Django project
 cd docqa_backend
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env file with your OpenAI API key
-
 # Run migrations
 python manage.py makemigrations
 python manage.py migrate
@@ -98,8 +94,8 @@ npm run dev
 Create a `.env` file in the `backend/` directory:
 
 ```env
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key_here
+# HuggingFace Configuration
+HUGGINGFACE_KEY=your_huggingface_key_here
 
 # Django Settings
 SECRET_KEY=your_django_secret_key
@@ -159,7 +155,10 @@ smart-doc-qa/
 ├── frontend/
 │   ├── src/
 │   │   ├── app/               # Next.js app directory
-│   │   ├── components/        # React components
+│   │   │   ├── components/    # React components
+│   │   │   ├── dashboard/     # React dashboard
+│   │   │   ├── login/         # React login
+│   │   │   ├── register/      # React register
 │   │   └── contexts/          # React contexts
 │   ├── package.json
 │   └── next.config.js
@@ -249,7 +248,7 @@ docker run -p 8000:8000 --env-file .env smart-doc-qa-backend
 # Production environment variables
 export DEBUG=False
 export DATABASE_URL=postgresql://...
-export OPENAI_API_KEY=...
+export HUGGINGFACE_KEY=...
 export ALLOWED_HOSTS=yourdomain.com
 ```
 
@@ -280,7 +279,7 @@ export ALLOWED_HOSTS=yourdomain.com
 - Build errors: Run `npm install` and check dependencies
 
 **AI/ML Issues:**
-- OpenAI API errors: Verify API key and billing
+- HUGGINGFACE errors: Verify API key and billing
 - Memory issues: Reduce chunk sizes or add pagination
 - Slow processing: Consider background task queues
 
