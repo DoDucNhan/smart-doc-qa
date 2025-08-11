@@ -95,7 +95,7 @@ Create a `.env` file in the `backend/` directory:
 
 ```env
 # HuggingFace Configuration
-HUGGINGFACE_KEY=your_huggingface_key_here
+HF_TOKEN=your_huggingface_key_here
 
 # Django Settings
 SECRET_KEY=your_django_secret_key

@@ -6,7 +6,7 @@ from django.conf import settings
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'docqa_backend.settings')
 django.setup()
 
-from documents.huggingface_service import LocalHuggingFaceService
+from backend.documents.huggingface_api_service import LocalHuggingFaceService
 
 def test_huggingface():
     print("Testing Hugging Face integration...")

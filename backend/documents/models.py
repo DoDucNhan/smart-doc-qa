@@ -12,6 +12,7 @@ class Document(models.Model):
     def __str__(self):
         return self.title
 
+
 class DocumentChunk(models.Model):
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='chunks')
     content = models.TextField()
