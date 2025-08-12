@@ -23,7 +23,7 @@ class HuggingFaceAPIService:
         
         # Set up all the API endpoints
         self.chat_url = "https://router.huggingface.co/v1/chat/completions"
-        self.embeddings_url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-exatraction"
+        self.embeddings_url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
         
         # This is YOUR similarity API endpoint from the example!
         self.similarity_url = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/sentence-similarity"
@@ -109,35 +109,70 @@ class HuggingFaceAPIService:
             raise
     
     def _get_api_embeddings(self, texts):
-        """Generate embeddings using HuggingFace API"""
+        """Generate embeddings using HuggingFace API with better error handling"""
         try:
+            # Validate input
+            if not texts or not all(isinstance(text, str) for text in texts):
+                raise ValueError("All inputs must be non-empty strings")
+            
+            # Limit text length to avoid API errors
+            processed_texts = []
+            for text in texts:
+                if len(text) > 5000:  # Truncate very long texts
+                    processed_texts.append(text[:5000] + "...")
+                else:
+                    processed_texts.append(text)
+            
             data = {
-                "inputs": texts,
-                "options": {"wait_for_model": True}
+                "inputs": processed_texts,
+                "options": {
+                    "wait_for_model": True,
+                    "use_cache": True
+                }
             }
             
             response = requests.post(
                 self.embeddings_url,
                 headers=self.headers,
                 json=data,
-                timeout=30
+                timeout=60  # Longer timeout
             )
             
             if response.status_code == 200:
                 embeddings = response.json()
                 logger.info(f"✅ Generated {len(embeddings)} API embeddings")
                 return embeddings
+            
+            elif response.status_code == 400:
+                error_detail = response.text
+                logger.error(f"API 400 error details: {error_detail}")
+                
+                # Common 400 error fixes
+                if "rate limit" in error_detail.lower():
+                    raise Exception("Rate limit exceeded. Please try again later.")
+                elif "input too long" in error_detail.lower():
+                    raise Exception("Text input too long. Try shorter text.")
+                elif "invalid input" in error_detail.lower():
+                    raise Exception("Invalid input format. Check text encoding.")
+                else:
+                    raise Exception(f"API validation error: {error_detail}")
+            
             elif response.status_code == 429:
                 logger.warning("Rate limit exceeded for embeddings API")
-                raise Exception("Too many requests. Please try again later.")
+                raise Exception("Rate limit exceeded. Please try again later.")
+            
             else:
-                logger.error(f"Embeddings API error: {response.status_code}")
+                logger.error(f"Embeddings API error: {response.status_code} - {response.text}")
                 raise Exception(f"API error: {response.status_code}")
                 
+        except requests.exceptions.Timeout:
+            logger.error("Embeddings API timeout")
+            raise Exception("API request timed out. Please try again.")
+        
         except Exception as e:
             logger.error(f"API embedding error: {e}")
             raise
-    
+        
     def _get_fake_embeddings(self, texts):
         """Generate fake embeddings (ONLY for testing)"""
         fake_embeddings = []

@@ -2,12 +2,15 @@ import os
 import logging
 from typing import List
 from .models import Document, DocumentChunk
-from .simple_api_service import HuggingFaceAPIService
+from .huggingface_api_service import HuggingFaceAPIService
+import time
+import random
+from django.db import transaction, connection
 
 logger = logging.getLogger(__name__)
 
 
-class SimpleDocumentProcessor:
+class DocumentProcessor:
     """
     Simple document processor that now uses the enhanced HuggingFaceAPIService
     with integrated similarity search capabilities
@@ -25,15 +28,34 @@ class SimpleDocumentProcessor:
         logger.info(f"  Production ready: {'Yes' if info['ready_for_production'] else 'No'}")
     
     def process_document(self, document: Document):
-        """
-        Process a document: read it, break it into chunks, and prepare for Q&A
+        """Process document with database retry logic"""
+        max_retries = 3
+        retry_delay = 1
         
-        Args:
-            document: A Document model instance from the database
-        
-        Returns:
-            List of DocumentChunk objects created
-        """
+        for attempt in range(max_retries):
+            try:
+                with transaction.atomic():
+                    return self._process_document_impl(document)
+                    
+            except Exception as e:
+                if "database is locked" in str(e).lower() and attempt < max_retries - 1:
+                    # Wait with exponential backoff + jitter
+                    wait_time = retry_delay * (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(f"Database locked, retrying in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    
+                    # Close the connection to force a new one
+                    connection.close()
+                    continue
+                else:
+                    # Final attempt failed or different error
+                    logger.error(f"Error processing document {document.id}: {e}")
+                    document.processed = False
+                    document.save()
+                    raise
+    
+    def _process_document_impl(self, document: Document):
+        """Actual document processing implementation"""
         logger.info(f"Starting to process document: {document.title}")
         
         try:
@@ -46,7 +68,7 @@ class SimpleDocumentProcessor:
             chunks = self._split_into_chunks(content)
             logger.info(f"Split document into {len(chunks)} chunks")
             
-            # Step 3: Generate embeddings (optional, for future use)
+            # Step 3: Generate embeddings (with better error handling)
             try:
                 embeddings = self.api_service.get_embeddings(chunks)
                 logger.info(f"Generated {len(embeddings)} embeddings")
@@ -55,18 +77,21 @@ class SimpleDocumentProcessor:
                 # Continue without embeddings - similarity search will still work
                 embeddings = [None] * len(chunks)
             
-            # Step 4: Save chunks to database
+            # Step 4: Save chunks to database (batch create for better performance)
             created_chunks = []
+            chunk_data = []
+            
             for i, chunk_text in enumerate(chunks):
-                # Create a DocumentChunk in the database
-                chunk = DocumentChunk.objects.create(
+                chunk_data.append(DocumentChunk(
                     document=document,
                     content=chunk_text,
                     chunk_index=i,
                     embedding_id=f"{document.id}_{i}"
-                )
-                created_chunks.append(chunk)
-                logger.info(f"Saved chunk {i+1}/{len(chunks)}")
+                ))
+            
+            # Bulk create for better performance and less lock contention
+            created_chunks = DocumentChunk.objects.bulk_create(chunk_data)
+            logger.info(f"Saved {len(created_chunks)} chunks")
             
             # Step 5: Mark document as processed
             document.processed = True
@@ -76,12 +101,9 @@ class SimpleDocumentProcessor:
             return created_chunks
             
         except Exception as e:
-            logger.error(f"Error processing document {document.id}: {e}")
-            # Mark as not processed if something went wrong
-            document.processed = False
-            document.save()
-            raise e
-    
+            logger.error(f"Error in document processing implementation: {e}")
+            raise
+        
     def _read_file(self, file_path):
         """
         Read content from a file
@@ -353,7 +375,7 @@ def test_complete_workflow():
     print("=" * 60)
     
     # Create processor
-    processor = SimpleDocumentProcessor()
+    processor = DocumentProcessor()
     
     # Test with simulated document content
     sample_content = """
