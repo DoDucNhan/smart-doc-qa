@@ -49,25 +49,25 @@ class HuggingFaceAPIService:
             logger.info("Loading local embedding model...")
             self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
             self.embedding_method = "local"
-            logger.info("✅ Local embeddings ready (FREE and FAST!)")
+            logger.info("[SUCCESS] Local embeddings ready (FREE and FAST!)")
             
         except ImportError:
             logger.warning("sentence-transformers not installed")
             if self.hf_token:
                 self.embedding_method = "api"
-                logger.info("✅ Using HuggingFace API embeddings")
+                logger.info("[SUCCESS] Using HuggingFace API embeddings")
             else:
                 self.embedding_method = "fake"
-                logger.warning("⚠️  Using fake embeddings (for testing only)")
+                logger.warning("Using fake embeddings (for testing only)")
                 
         except Exception as e:
             logger.warning(f"Local embeddings failed: {e}")
             if self.hf_token:
                 self.embedding_method = "api"
-                logger.info("✅ Using HuggingFace API embeddings")
+                logger.info("[SUCCESS] Using HuggingFace API embeddings")
             else:
                 self.embedding_method = "fake"
-                logger.warning("⚠️  Using fake embeddings (for testing only)")
+                logger.warning("Using fake embeddings (for testing only)")
     
     def get_embeddings(self, texts):
         """
@@ -102,7 +102,7 @@ class HuggingFaceAPIService:
         try:
             embeddings = self.embedding_model.encode(texts)
             embeddings_list = embeddings.tolist()
-            logger.info(f"✅ Generated {len(embeddings_list)} local embeddings")
+            logger.info(f"[SUCCESS] Generated {len(embeddings_list)} local embeddings")
             return embeddings_list
         except Exception as e:
             logger.error(f"Local embedding error: {e}")
@@ -140,7 +140,7 @@ class HuggingFaceAPIService:
             
             if response.status_code == 200:
                 embeddings = response.json()
-                logger.info(f"✅ Generated {len(embeddings)} API embeddings")
+                logger.info(f"[SUCCESS] Generated {len(embeddings)} API embeddings")
                 return embeddings
             
             elif response.status_code == 400:
@@ -185,7 +185,7 @@ class HuggingFaceAPIService:
             ]
             fake_embeddings.append(embedding)
         
-        logger.warning(f"⚠️  Generated {len(fake_embeddings)} FAKE embeddings (testing only)")
+        logger.warning(f"Generated {len(fake_embeddings)} FAKE embeddings (testing only)")
         return fake_embeddings
     
     def calculate_similarity(self, source_sentence, target_sentences):
@@ -225,7 +225,7 @@ class HuggingFaceAPIService:
             
             if response.status_code == 200:
                 similarities = response.json()
-                logger.info(f"✅ Got {len(similarities)} similarity scores")
+                logger.info(f"[SUCCESS] Got {len(similarities)} similarity scores")
                 
                 # Log the scores for debugging
                 for i, (sentence, score) in enumerate(zip(target_sentences, similarities)):
@@ -290,7 +290,7 @@ class HuggingFaceAPIService:
             # Return top k results
             top_chunks = chunk_scores[:top_k]
             
-            logger.info(f"✅ Found top {len(top_chunks)} relevant chunks:")
+            logger.info(f"[SUCCESS] Found top {len(top_chunks)} relevant chunks:")
             for i, chunk in enumerate(top_chunks, 1):
                 score = chunk['similarity_score']
                 preview = chunk['content'][:60] + "..." if len(chunk['content']) > 60 else chunk['content']
@@ -362,7 +362,7 @@ class HuggingFaceAPIService:
                 
                 if "choices" in result and len(result["choices"]) > 0:
                     answer = result["choices"][0]["message"]["content"]
-                    logger.info("✅ Got AI answer")
+                    logger.info("[SUCCESS] Got AI answer")
                     return answer.strip()
                 else:
                     return "Sorry, got an unexpected response from the AI."
@@ -412,12 +412,12 @@ def test_similarity_integration():
     info = service.get_service_info()
     print(f"\nService Status:")
     print(f"  Embeddings: {info['embedding_method']}")
-    print(f"  Similarity API: {'✅' if info['has_similarity_api'] else '❌'}")
-    print(f"  Chat API: {'✅' if info['has_chat_api'] else '❌'}")
-    print(f"  Ready for production: {'✅' if info['ready_for_production'] else '❌'}")
+    print(f"  Similarity API: {'[SUCCESS]' if info['has_similarity_api'] else '[FAILED]'}")
+    print(f"  Chat API: {'[SUCCESS]' if info['has_chat_api'] else '[FAILED]'}")
+    print(f"  Ready for production: {'[SUCCESS]' if info['ready_for_production'] else '[FAILED]'}")
     
     if not info['has_similarity_api']:
-        print("\n❌ No HF_TOKEN found. Please set your token to test similarity API.")
+        print("\n[FAILED] No HF_TOKEN found. Please set your token to test similarity API.")
         return
     
     # Test 1: Your exact example
@@ -441,7 +441,7 @@ def test_similarity_integration():
             print(f"  Score: {score:.3f} - '{sentence}'")
     
     except Exception as e:
-        print(f"❌ Test 1 failed: {e}")
+        print(f"[FAILED] Test 1 failed: {e}")
     
     # Test 2: Document Q&A scenario
     print(f"\n" + "="*40)
@@ -471,13 +471,13 @@ def test_similarity_integration():
         if relevant_chunks:
             best_chunk = relevant_chunks[0]
             answer = service.answer_question(question, best_chunk['content'])
-            print(f"\n🤖 AI Answer: {answer}")
+            print(f"\n AI Answer: {answer}")
     
     except Exception as e:
-        print(f"❌ Test 2 failed: {e}")
+        print(f"[FAILED] Test 2 failed: {e}")
     
     print(f"\n" + "="*60)
-    print("✅ Similarity API integration test completed!")
+    print("[SUCCESS] Similarity API integration test completed!")
     print("="*60)
 
 

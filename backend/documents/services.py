@@ -97,7 +97,7 @@ class DocumentProcessor:
             document.processed = True
             document.save()
             
-            logger.info(f"✅ Successfully processed document: {document.title}")
+            logger.info(f"[SUCCESS] Successfully processed document: {document.title}")
             return created_chunks
             
         except Exception as e:
@@ -280,7 +280,7 @@ class DocumentProcessor:
                 else:
                     logger.info(f"Moderate match found (score: {best_score:.3f})")
             
-            logger.info("✅ Successfully generated answer")
+            logger.info("[SUCCESS] Successfully generated answer")
             return answer
             
         except Exception as e:
@@ -444,17 +444,17 @@ def test_complete_workflow():
                 # Show quality assessment
                 best_score = relevant_chunks[0]['similarity_score']
                 if best_score > 0.7:
-                    print("✅ Excellent match - high quality answer expected")
+                    print("[SUCCESS] Excellent match - high quality answer expected")
                 elif best_score > 0.5:
                     print("✓ Good match - relevant answer expected")
                 else:
                     print("⚠️ Moderate match - answer may be less precise")
         
         except Exception as e:
-            print(f"❌ Question {i} failed: {e}")
+            print(f"[FAILED] Question {i} failed: {e}")
     
     print(f"\n" + "="*60)
-    print("✅ Complete workflow test finished!")
+    print("[SUCCESS] Complete workflow test finished!")
     print("="*60)
     
     # Show service status

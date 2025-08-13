@@ -37,7 +37,7 @@ class DocumentModelTest(TestCase):
         self.assertFalse(document.processed)  # Should start unprocessed
         self.assertIsNotNone(document.uploaded_at)
         
-        print("✅ Document creation test passed")
+        print("[SUCCESS] Document creation test passed")
     
     def test_document_chunk_creation(self):
         """Test that we can create chunks for a document"""
@@ -58,7 +58,7 @@ class DocumentModelTest(TestCase):
         self.assertEqual(chunk.chunk_index, 0)
         self.assertEqual(document.chunks.count(), 1)
         
-        print("✅ Document chunk creation test passed")
+        print("[SUCCESS] Document chunk creation test passed")
 
 
 class HuggingFaceAPIServiceTest(TestCase):
@@ -77,7 +77,7 @@ class HuggingFaceAPIServiceTest(TestCase):
         self.assertIn('has_similarity_api', info)
         self.assertIn('has_chat_api', info)
         
-        print("✅ Service initialization test passed")
+        print("[SUCCESS] Service initialization test passed")
     
     @patch('documents.huggingface_api_service.requests.post')
     def test_similarity_calculation(self, mock_post):
@@ -110,7 +110,7 @@ class HuggingFaceAPIServiceTest(TestCase):
         self.assertEqual(payload['inputs']['source_sentence'], question)
         self.assertEqual(payload['inputs']['sentences'], chunks)
         
-        print("✅ Similarity calculation test passed")
+        print("[SUCCESS] Similarity calculation test passed")
     
     def test_find_most_relevant_chunks(self):
         """Test finding most relevant chunks"""
@@ -137,7 +137,7 @@ class HuggingFaceAPIServiceTest(TestCase):
             self.assertIn("Python is a programming language", relevant_chunks[0]['content'])
             self.assertIn("Programming languages like Python", relevant_chunks[1]['content'])
         
-        print("✅ Relevant chunks finding test passed")
+        print("[SUCCESS] Relevant chunks finding test passed")
     
     @patch('documents.huggingface_api_service.requests.post')
     def test_answer_question(self, mock_post):
@@ -164,7 +164,7 @@ class HuggingFaceAPIServiceTest(TestCase):
         self.assertEqual(answer, "Python is a high-level programming language.")
         mock_post.assert_called_once()
         
-        print("✅ Answer question test passed")
+        print("[SUCCESS] Answer question test passed")
 
 
 class DocumentProcessorTest(TestCase):
@@ -194,7 +194,7 @@ class DocumentProcessorTest(TestCase):
         for chunk in chunks:
             self.assertLessEqual(len(chunk), 150)  # Some flexibility for sentence boundaries
         
-        print("✅ Text chunking test passed")
+        print("[SUCCESS] Text chunking test passed")
     
     @patch('builtins.open', create=True)
     def test_read_text_file(self, mock_open):
@@ -207,11 +207,10 @@ class DocumentProcessorTest(TestCase):
         self.assertEqual(content, "This is test content")
         mock_open.assert_called_once_with('test.txt', 'r', encoding='utf-8')
         
-        print("✅ Text file reading test passed")
+        print("[SUCCESS] Text file reading test passed")
     
-    @patch('documents.huggingface_api_service.HuggingFaceAPIService')
-    def test_answer_question_integration(self, mock_service_class):
-        """Test the complete answer question workflow"""
+    def test_answer_question_integration(self):
+        """Test the complete answer question workflow - FIXED VERSION"""
         # Create a processed document with chunks
         document = Document.objects.create(
             user=self.user,
@@ -232,28 +231,35 @@ class DocumentProcessorTest(TestCase):
             chunk_index=1
         )
         
-        # Mock the API service
-        mock_service = Mock()
-        mock_service.find_most_relevant_chunks.return_value = [
-            {
-                'content': 'Machine learning is a subset of artificial intelligence.',
-                'similarity_score': 0.89,
-                'index': 0
-            }
-        ]
-        mock_service.answer_question.return_value = "Machine learning is a branch of AI."
-        mock_service_class.return_value = mock_service
+        # Mock the API service directly on the processor instance
+        with patch.object(self.processor, 'api_service') as mock_service:
+            # Set up the mock responses
+            mock_service.find_most_relevant_chunks.return_value = [
+                {
+                    'content': 'Machine learning is a subset of artificial intelligence.',
+                    'similarity_score': 0.89,
+                    'index': 0
+                }
+            ]
+            mock_service.answer_question.return_value = "Machine learning is a branch of AI."
+            
+            # Test the answer question method
+            answer = self.processor.answer_question("What is machine learning?", document_id=document.id)
+            
+            # Verify the response
+            self.assertEqual(answer, "Machine learning is a branch of AI.")
+            
+            # Verify the methods were called
+            mock_service.find_most_relevant_chunks.assert_called_once()
+            mock_service.answer_question.assert_called_once()
+            
+            # Verify the arguments passed to find_most_relevant_chunks
+            call_args = mock_service.find_most_relevant_chunks.call_args
+            self.assertEqual(call_args[0][0], "What is machine learning?")  # Question
+            self.assertEqual(len(call_args[0][1]), 2)  # Should have 2 chunks
+            self.assertEqual(call_args[1]['top_k'], 3)  # top_k parameter
         
-        # Test the answer question method
-        answer = self.processor.answer_question("What is machine learning?", document_id=document.id)
-        
-        self.assertEqual(answer, "Machine learning is a branch of AI.")
-        
-        # Verify the similarity search was called
-        mock_service.find_most_relevant_chunks.assert_called_once()
-        mock_service.answer_question.assert_called_once()
-        
-        print("✅ Answer question integration test passed")
+        print("[SUCCESS] Answer question integration test passed")
 
 
 class DocumentAPITest(APITestCase):
@@ -289,7 +295,7 @@ class DocumentAPITest(APITestCase):
         document = Document.objects.first()
         self.assertEqual(document.user, self.user)
         
-        print("✅ Document upload API test passed")
+        print("[SUCCESS] Document upload API test passed")
     
     def test_list_documents(self):
         """Test listing user's documents"""
@@ -314,7 +320,7 @@ class DocumentAPITest(APITestCase):
         self.assertEqual(len(response.data), 1)  # Only user's document
         self.assertEqual(response.data[0]['title'], 'My Document')
         
-        print("✅ List documents API test passed")
+        print("[SUCCESS] List documents API test passed")
     
     @patch('documents.views.DocumentProcessor')
     def test_ask_question_api(self, mock_processor_class):
@@ -341,7 +347,7 @@ class DocumentAPITest(APITestCase):
         self.assertEqual(response.data['question'], 'What is this document about?')
         self.assertEqual(response.data['document_title'], 'Test Document')
         
-        print("✅ Ask question API test passed")
+        print("[SUCCESS] Ask question API test passed")
     
     def test_ask_question_unprocessed_document(self):
         """Test asking question about unprocessed document"""
@@ -359,7 +365,7 @@ class DocumentAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('still being processed', response.data['error'])
         
-        print("✅ Unprocessed document error test passed")
+        print("[SUCCESS] Unprocessed document error test passed")
     
     def test_unauthorized_access(self):
         """Test that unauthorized requests are rejected"""
@@ -369,7 +375,7 @@ class DocumentAPITest(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
-        print("✅ Unauthorized access test passed")
+        print("[SUCCESS] Unauthorized access test passed")
 
 
 class IntegrationTest(TestCase):
@@ -419,7 +425,7 @@ class IntegrationTest(TestCase):
         
         self.assertEqual(answer, "Machine learning enables computers to learn from data.")
         
-        print("✅ Complete workflow integration test passed")
+        print("[SUCCESS] Complete workflow integration test passed")
 
 
 # Test runner function
@@ -439,9 +445,9 @@ def run_tests():
     failures = test_runner.run_tests(["documents.test"])
     
     if failures:
-        print(f"\n❌ {failures} test(s) failed")
+        print(f"\n[FAILED] {failures} test(s) failed")
     else:
-        print(f"\n✅ All tests passed!")
+        print(f"\n[SUCCESS] All tests passed!")
     
     print("=" * 60)
 

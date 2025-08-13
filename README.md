@@ -45,7 +45,7 @@ A modern web application that allows users to upload documents and ask intellige
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/smart-doc-qa.git
+git clone https://github.com/DoDucNhan/smart-doc-qa.git
 cd smart-doc-qa
 ```
 
@@ -63,7 +63,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Navigate to Django project
-cd docqa_backend
+cd backend
 
 # Run migrations
 python manage.py makemigrations
